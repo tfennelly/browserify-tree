@@ -72,7 +72,8 @@ class Node {
     }
 
     draw() {
-        console.log('  |'.repeat(this.depth) + `--${this.moduleId} (${this.packEntry.source.length})`);
+        let trimmedModuleId = this.moduleId.replace(process.cwd(), '');
+        console.log('  |'.repeat(this.depth) + `--${trimmedModuleId} (${this.packEntry.source.length})`);
         for (let i = 0; i < this.dependencies.length; i++) {
             this.dependencies[i].draw();
         }
