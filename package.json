@@ -11,7 +11,7 @@
   },
   "author": "Tom Fennelly <tom.fennelly@gmail.com>",
   "license": "MIT",
-  "dependants": {
+  "dependencies": {
     "browser-unpack": "^1.1.1"
   }
 }

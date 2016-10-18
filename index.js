@@ -67,14 +67,14 @@ class Node {
         }
 
         this.depth = depth;
-        this.dependants = [];
+        this.dependencies = [];
         this._resolveDeps();
     }
 
     draw() {
         console.log(' '.repeat(this.depth * 2) + `- ${this.moduleId} (${this.packEntry.source.length})`);
-        for (let i = 0; i < this.dependants.length; i++) {
-            this.dependants[i].draw();
+        for (let i = 0; i < this.dependencies.length; i++) {
+            this.dependencies[i].draw();
         }
     }
 
@@ -85,7 +85,7 @@ class Node {
                 const depModule = findModuleById(depModuleId);
                 if (depModule) {
                     const depModuleNode = new Node(depModule, this.depth + 1);
-                    this.dependants.push(depModuleNode);
+                    this.dependencies.push(depModuleNode);
                 } else {
                     console.warn(`*** No module having Id '${depModuleId}' found in bundle.`);
                 }
