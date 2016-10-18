@@ -28,7 +28,8 @@ function listUnusedPacks() {
     console.log('The following modules do not appear to be in use on the above dependency tree:');
     packEntries.forEach((packEntry) => {
         if (treeModuleIds.indexOf(packEntry.id) === -1) {
-            console.log(`- ${packEntry.id}`);
+            let trimmedModuleId = packEntry.id.replace(process.cwd(), '');
+            console.log(`- ${trimmedModuleId}`);
         }
     });
 }
