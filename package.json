@@ -1,0 +1,17 @@
+{
+  "name": "browserify-tree",
+  "version": "0.0.1",
+  "description": "Generate a Browserify bundle dependency tree for bundled modules",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "browserify-tree": "./cli.js"
+  },
+  "author": "Tom Fennelly <tom.fennelly@gmail.com>",
+  "license": "MIT",
+  "dependants": {
+    "browser-unpack": "^1.1.1"
+  }
+}
