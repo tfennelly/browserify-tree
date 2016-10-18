@@ -1,7 +1,7 @@
 const fs = require('fs');
 const unpack = require('browser-unpack');
 
-let packEntries;
+let bundlePackEntries;
 const treeModuleIds = [];
 
 exports.drawTree = function(bundlePath) {
@@ -10,7 +10,7 @@ exports.drawTree = function(bundlePath) {
     }
 
     const bundleContent = fs.readFileSync(bundlePath, "utf-8");
-    packEntries  = unpack(bundleContent);
+    bundlePackEntries  = unpack(bundleContent);
 
     const entryModule = findEntryModule();
     const tree = new Node(entryModule);
@@ -18,17 +18,62 @@ exports.drawTree = function(bundlePath) {
     console.log('------------------------------------------------');
     tree.draw();
     console.log('------------------------------------------------');
-    if (treeModuleIds.length < packEntries.length) {
-        listUnusedPacks();
+    if (treeModuleIds.length < bundlePackEntries.length) {
+        listUnusedPacksInDepTree();
+        console.log('------------------------------------------------');
+        listUnusedPacksAnywhere();
         console.log('------------------------------------------------');
     }
 };
 
-function listUnusedPacks() {
+function listUnusedPacksInDepTree() {
     console.log('The following modules do not appear to be in use on the above dependency tree:');
-    packEntries.forEach((packEntry) => {
+    bundlePackEntries.forEach((packEntry) => {
         if (treeModuleIds.indexOf(packEntry.id) === -1) {
             let trimmedModuleId = packEntry.id.replace(process.cwd(), '');
+            console.log(`- ${trimmedModuleId}`);
+        }
+    });
+}
+
+function listUnusedPacksAnywhere() {
+    console.log('The following modules do not appear to be in use anywhere i.e. no dependants:');
+
+    const twoWayPackEntryList = [];
+
+    bundlePackEntries.forEach((packEntry) => {
+        twoWayPackEntryList.push(new TwoWayPackEntry(packEntry));
+    });
+
+    function findTwoWayPackEntry(packId) {
+        for(let i = 0; i < twoWayPackEntryList.length; i++) {
+            if (twoWayPackEntryList[i].packEntry.id === packId) {
+                return twoWayPackEntryList[i];
+            }
+        }
+        return undefined;
+    }
+
+    // Populate the dependants...
+    twoWayPackEntryList.forEach((twoWayPackEntry) => {
+        for (let dep in twoWayPackEntry.packEntry.deps) {
+            if (twoWayPackEntry.packEntry.deps.hasOwnProperty(dep)) {
+                const depModuleId = twoWayPackEntry.packEntry.deps[dep];
+                const depModule2Way = findTwoWayPackEntry(depModuleId);
+                if (depModule2Way) {
+                    depModule2Way.addDependant(twoWayPackEntry.packEntry.id);
+                } else {
+                    console.warn(`*** No module having Id '${depModuleId}' found in bundle.`);
+                }
+            }
+        }
+    });
+
+    // Run through them again now and print those that
+    // have zero dependants...
+    twoWayPackEntryList.forEach((twoWayPackEntry) => {
+        if (twoWayPackEntry.dependants.length === 0) {
+            let trimmedModuleId = twoWayPackEntry.packEntry.id.replace(process.cwd(), '');
             console.log(`- ${trimmedModuleId}`);
         }
     });
@@ -43,7 +88,7 @@ function findModuleById(id) {
 }
 
 function findPackEntries(filterFunc) {
-    var resultSet = packEntries.filter(filterFunc);
+    var resultSet = bundlePackEntries.filter(filterFunc);
     if (resultSet.length === 1) {
         return resultSet[0];
     } else if (resultSet.length > 1) {
@@ -92,6 +137,20 @@ class Node {
                     console.warn(`*** No module having Id '${depModuleId}' found in bundle.`);
                 }
             }
+        }
+    }
+}
+
+class TwoWayPackEntry {
+
+    constructor(packEntry) {
+        this.packEntry = packEntry;
+        this.dependants = [];
+    }
+
+    addDependant(packEntryId) {
+        if (this.dependants.indexOf(packEntryId) === -1) {
+            this.dependants.push(packEntryId);
         }
     }
 }
