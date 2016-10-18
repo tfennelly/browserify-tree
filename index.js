@@ -72,7 +72,7 @@ class Node {
     }
 
     draw() {
-        console.log(' '.repeat(this.depth * 2) + `- ${this.moduleId} (${this.packEntry.source.length})`);
+        console.log('  |'.repeat(this.depth) + `--${this.moduleId} (${this.packEntry.source.length})`);
         for (let i = 0; i < this.dependencies.length; i++) {
             this.dependencies[i].draw();
         }
