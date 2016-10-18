@@ -2,6 +2,7 @@ const fs = require('fs');
 const unpack = require('browser-unpack');
 
 let packEntries;
+const treeModuleIds = [];
 
 exports.drawTree = function(bundlePath) {
     if (!fs.existsSync(bundlePath)) {
@@ -14,8 +15,23 @@ exports.drawTree = function(bundlePath) {
     const entryModule = findEntryModule();
     const tree = new Node(entryModule);
 
+    console.log('------------------------------------------------');
     tree.draw();
+    console.log('------------------------------------------------');
+    if (treeModuleIds.length < packEntries.length) {
+        listUnusedPacks();
+        console.log('------------------------------------------------');
+    }
 };
+
+function listUnusedPacks() {
+    console.log('The following modules do not appear to be in use on the above dependency tree:');
+    packEntries.forEach((packEntry) => {
+        if (treeModuleIds.indexOf(packEntry.id) === -1) {
+            console.log(`- ${packEntry.id}`);
+        }
+    });
+}
 
 function findEntryModule() {
     return findPackEntries((packEntry) => packEntry.entry);
@@ -45,13 +61,18 @@ class Node {
     constructor(packEntry, depth = 0) {
         this.packEntry = packEntry;
         this.moduleId = packEntry.id;
+
+        if (treeModuleIds.indexOf(this.moduleId) === -1) {
+            treeModuleIds.push(this.moduleId);
+        }
+
         this.depth = depth;
         this.dependants = [];
         this._resolveDeps();
     }
 
     draw() {
-        console.log(' '.repeat(this.depth * 2) + `- ` + this.moduleId);
+        console.log(' '.repeat(this.depth * 2) + `- ${this.moduleId} (${this.packEntry.source.length})`);
         for (let i = 0; i < this.dependants.length; i++) {
             this.dependants[i].draw();
         }
