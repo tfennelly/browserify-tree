@@ -4,71 +4,81 @@ const util = require('./util');
 
 let bundlePackEntries;
 const treeModuleIds = [];
+let config;
 
-const treeNodeCache = {};
-
-exports.drawTree = function(bundlePath, config) {
+exports.drawTree = function(bundlePath, userConfig) {
     if (!fs.existsSync(bundlePath)) {
         util.error(`No such file '${bundlePath}'`);
     }
+
+    config = userConfig;
 
     const bundleContent = fs.readFileSync(bundlePath, "utf-8");
     bundlePackEntries  = unpack(bundleContent);
 
     const entryModule = findEntryPack();
+
+    if (typeof entryModule.id === 'number') {
+        util.error('This bundle was generated with path IDs. Please regenerate with "fullPaths". See Browserify documentation.');
+    }
+
+    console.log(`\nThe bundle entry module is:\n\t${entryModule.id}`);
+
     const tree = new TreeNode(entryModule).resolveDeps();
 
-    console.log('------------------------------------------------');
-    tree.draw();
-    console.log('------------------------------------------------');
+    if (!config.notree) {
+        console.log('------------------------------------------------');
+        tree.draw();
+        console.log('------------------------------------------------');
+    }
 
     var hasUnused = (treeModuleIds.length < bundlePackEntries.length);
     if (hasUnused) {
         const twoWayPackEntryList = new TwoWayPackEntryList();
 
         if (config.unusedt) {
-            listUnusedPacksInDepTree(twoWayPackEntryList, config);
+            listUnusedPacksInDepTree(twoWayPackEntryList);
             console.log('------------------------------------------------');
         }
         if (config.unuseda) {
-            listUnusedPacksAnywhere(twoWayPackEntryList, config);
+            listUnusedPacksAnywhere(twoWayPackEntryList);
             console.log('------------------------------------------------');
         }
     }
 };
 
-function listUnusedPacksInDepTree(twoWayPackEntryList, config) {
-    console.log('The following modules do not appear to be in use on the above dependency tree:');
+function listUnusedPacksInDepTree(twoWayPackEntryList) {
+    console.log('\nThe following modules do not appear to be in use via the bundle entry module:\n');
     bundlePackEntries.forEach((packEntry) => {
         if (treeModuleIds.indexOf(packEntry.id) === -1) {
-            printPackDetails(packEntry, config, twoWayPackEntryList);
+            printPackDetails(packEntry, twoWayPackEntryList);
         }
     });
 }
 
-function listUnusedPacksAnywhere(twoWayPackEntryList, config) {
-    console.log('The following modules do not appear to be in use anywhere i.e. no dependants:');
+function listUnusedPacksAnywhere(twoWayPackEntryList) {
+    console.log('\nThe following modules do not appear to be in use anywhere i.e. no dependants:\n');
 
     // Run through twoWayPackEntryList and print those that
     // have zero dependants...
     twoWayPackEntryList.forEach((twoWayPackEntry) => {
         if (twoWayPackEntry.dependants.length === 0) {
-            printPackDetails(twoWayPackEntry.packEntry, config, twoWayPackEntryList);
+            printPackDetails(twoWayPackEntry.packEntry, twoWayPackEntryList);
         }
     });
 }
 
-function printPackDetails(packEntry, config, twoWayPackEntryList) {
+function printPackDetails(packEntry, twoWayPackEntryList) {
     let trimmedModuleId = trimModuleId(packEntry.id);
     if (!config.filter || util.startsWith(trimmedModuleId, config.filter)) {
         if (config.unuseddc) {
-            new TreeNode(packEntry).resolveDeps().draw();
+            new TreeNode(packEntry).resolveDeps(2).draw();
         } else {
             console.log(`- ${trimmedModuleId}`);
         }
         if (config.unuseddd) {
             const twoWayPackEntry = twoWayPackEntryList.findByPackId(packEntry.id);
-            console.log(`- Dependants (depending on this module):`);
+            console.log(`    Dependants (depending on this module):`);
             twoWayPackEntry.dependants.forEach((dependant) => {
                 console.log(`    - ${trimModuleId(dependant)}`);
             });
@@ -113,11 +123,11 @@ class TreeNode {
         }
 
         this.dependencies = undefined;
+        this.depth = this.calcDepth();
     }
 
     draw(depth = 0) {
-        let trimmedModuleId = this.moduleId.replace(process.cwd(), '');
-        console.log('  |'.repeat(depth) + `--${trimmedModuleId} (${this.packEntry.source.length})`);
+        this.drawModuleId(depth);
         if (this.dependencies) {
             for (let i = 0; i < this.dependencies.length; i++) {
                 this.dependencies[i].draw(depth + 1);
@@ -125,21 +135,40 @@ class TreeNode {
         }
     }
 
+    drawModuleId(depth = this.depth) {
+        let trimmedModuleId = trimModuleId(this.moduleId);
+        console.log('=' + '  |'.repeat(depth) + `--${trimmedModuleId} (${this.packEntry.source.length})`);
+    }
+
+    drawPathFromOldest() {
+        const stack = [];
+        let parentNode = this.parentNode;
+
+        stack.push(this);
+        while(parentNode) {
+            stack.push(parentNode);
+            parentNode = parentNode.parentNode;
+        }
+
+        let indent = 0;
+        let nodeToDraw = stack.shift();
+        while(nodeToDraw) {
+            let trimmedModuleId = trimModuleId(nodeToDraw.moduleId);
+            console.log('  |'.repeat(indent) + `--${trimmedModuleId}`);
+            nodeToDraw = stack.shift();
+            indent++;
+        }
+    }
+
     resolveDeps(toDepth) {
         if (toDepth) {
-            const thisNodeDepth = this.depth();
-            if (toDepth >= thisNodeDepth) {
+            if (this.depth >= toDepth) {
                 // Don't resolve any deeper...
                 return this;
             }
         }
 
         this.dependencies = [];
-
-        if (this.packEntry.id === '/Users/tfennelly/projects/blueocean/blueocean-dashboard/node_modules/stream-browserify/node_modules/readable-stream/lib/_stream_writable.js') {
-            console.log('#############################################')
-        }
-        console.log(this.packEntry.id)
 
         for (let dep in this.packEntry.deps) {
             if (this.packEntry.deps.hasOwnProperty(dep)) {
@@ -175,7 +204,7 @@ class TreeNode {
         return false;
     }
 
-    depth() {
+    calcDepth() {
         let depth = 0;
         let parentNode = this.parentNode;
 
