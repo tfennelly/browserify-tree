@@ -127,7 +127,7 @@ class TreeNode {
     }
 
     draw(depth = 0) {
-        this.drawModuleId(depth);
+        this.outputModuleId(depth);
         if (this.dependencies) {
             for (let i = 0; i < this.dependencies.length; i++) {
                 this.dependencies[i].draw(depth + 1);
@@ -135,9 +135,11 @@ class TreeNode {
         }
     }
 
-    drawModuleId(depth = this.depth) {
+    outputModuleId(depth = this.depth) {
         let trimmedModuleId = trimModuleId(this.moduleId);
-        console.log('=' + '  |'.repeat(depth) + `--${trimmedModuleId} (${this.packEntry.source.length})`);
+        const isAlreadyOnTree = (this.dependencies === undefined);
+        console.log('=' + '  |'.repeat(depth)
+            + `--${trimmedModuleId} (${this.packEntry.source.length})${(isAlreadyOnTree?' (circular)':'')}`);
     }
 
     drawPathFromOldest() {
@@ -161,14 +163,14 @@ class TreeNode {
     }
 
     resolveDeps(toDepth) {
+        this.dependencies = [];
+
         if (toDepth) {
             if (this.depth >= toDepth) {
                 // Don't resolve any deeper...
                 return this;
             }
         }
-
-        this.dependencies = [];
 
         for (let dep in this.packEntry.deps) {
             if (this.packEntry.deps.hasOwnProperty(dep)) {
