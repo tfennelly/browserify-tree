@@ -54,6 +54,7 @@ if (process.argv.length < 3) {
         console.log('');
         console.log('   --depth       The depth to which dependencies are resolved (default 3).');
         console.log('                 Be careful changing this !!');
+        console.log('                 e.g. --depth=6');
         console.log('');
         console.log("   --notree      Don't output the entry module's dependency tree.");
         console.log('');
