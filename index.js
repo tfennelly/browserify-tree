@@ -3,6 +3,7 @@ const unpack = require('browser-unpack');
 const util = require('./util');
 
 let bundlePackEntries;
+let tree;
 const treeModuleIds = [];
 let config;
 
@@ -24,7 +25,7 @@ exports.drawTree = function(bundlePath, userConfig) {
 
     console.log(`\nThe bundle entry module is:\n\t${entryModule.id}`);
 
-    const tree = new TreeNode(entryModule).resolveDeps();
+    tree = new TreeNode(entryModule).resolveDeps();
 
     if (!config.notree) {
         console.log('------------------------------------------------');
@@ -118,7 +119,10 @@ class TreeNode {
         this.parentNode = parentNode;
         this.moduleId = packEntry.id;
 
-        if (treeModuleIds.indexOf(this.moduleId) === -1) {
+        // Only track the moduleIds while we are constructing the
+        // global tree reference. Other tree constructions should not
+        // add to the list.
+        if (!tree && treeModuleIds.indexOf(this.moduleId) === -1) {
             treeModuleIds.push(this.moduleId);
         }
 
