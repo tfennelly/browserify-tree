@@ -1,12 +1,13 @@
 const fs = require('fs');
 const unpack = require('browser-unpack');
+const util = require('./util');
 
 let bundlePackEntries;
 const treeModuleIds = [];
 
-exports.drawTree = function(bundlePath) {
+exports.drawTree = function(bundlePath, config) {
     if (!fs.existsSync(bundlePath)) {
-        error(`No such file '${bundlePath}'`);
+        util.error(`No such file '${bundlePath}'`);
     }
 
     const bundleContent = fs.readFileSync(bundlePath, "utf-8");
@@ -18,25 +19,33 @@ exports.drawTree = function(bundlePath) {
     console.log('------------------------------------------------');
     tree.draw();
     console.log('------------------------------------------------');
-    if (treeModuleIds.length < bundlePackEntries.length) {
-        listUnusedPacksInDepTree();
-        console.log('------------------------------------------------');
-        listUnusedPacksAnywhere();
-        console.log('------------------------------------------------');
+
+    var hasUnused = (treeModuleIds.length < bundlePackEntries.length);
+    if (hasUnused) {
+        if (config.unusedt) {
+            listUnusedPacksInDepTree(config.filter);
+            console.log('------------------------------------------------');
+        }
+        if (config.unuseda) {
+            listUnusedPacksAnywhere(config.filter);
+            console.log('------------------------------------------------');
+        }
     }
 };
 
-function listUnusedPacksInDepTree() {
+function listUnusedPacksInDepTree(filter) {
     console.log('The following modules do not appear to be in use on the above dependency tree:');
     bundlePackEntries.forEach((packEntry) => {
         if (treeModuleIds.indexOf(packEntry.id) === -1) {
             let trimmedModuleId = packEntry.id.replace(process.cwd(), '');
-            console.log(`- ${trimmedModuleId}`);
+            if (!filter || util.startsWith(trimmedModuleId, filter)) {
+                console.log(`- ${trimmedModuleId}`);
+            }
         }
     });
 }
 
-function listUnusedPacksAnywhere() {
+function listUnusedPacksAnywhere(filter) {
     console.log('The following modules do not appear to be in use anywhere i.e. no dependants:');
 
     const twoWayPackEntryList = [];
@@ -74,7 +83,9 @@ function listUnusedPacksAnywhere() {
     twoWayPackEntryList.forEach((twoWayPackEntry) => {
         if (twoWayPackEntry.dependants.length === 0) {
             let trimmedModuleId = twoWayPackEntry.packEntry.id.replace(process.cwd(), '');
-            console.log(`- ${trimmedModuleId}`);
+            if (!filter || util.startsWith(trimmedModuleId, filter)) {
+                console.log(`- ${trimmedModuleId}`);
+            }
         }
     });
 }
@@ -95,11 +106,6 @@ function findPackEntries(filterFunc) {
         return resultSet;
     }
     return undefined;
-}
-
-function error(message) {
-    console.error(`Error: ${message}`);
-    process.exit(1);
 }
 
 class Node {
