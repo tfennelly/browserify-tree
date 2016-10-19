@@ -46,6 +46,9 @@ if (process.argv.length < 3) {
         console.log('   --filter      Unused module (see --unusedt and --unuseda) listing filter.');
         console.log('                 e.g. --filter=/node_modules/parse-asn1');
         console.log('');
+        console.log('   --depth       The depth to which dependencies are resolved (default 3).');
+        console.log('                 Be careful changing this !!');
+        console.log('');
         console.log('   --unuseddc    List dependencies of unused modules (what it depends on).');
         console.log('   --unuseddd    List dependants of unused modules (what depends on it).');
         console.log('');

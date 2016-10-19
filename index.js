@@ -12,7 +12,9 @@ exports.drawTree = function(bundlePath, userConfig) {
         util.error(`No such file '${bundlePath}'`);
     }
 
-    config = userConfig;
+    config = Object.assign({
+        depth: 3
+    }, userConfig);
 
     const bundleContent = fs.readFileSync(bundlePath, "utf-8");
     bundlePackEntries  = unpack(bundleContent);
@@ -73,7 +75,7 @@ function printPackDetails(packEntry, twoWayPackEntryList) {
     let trimmedModuleId = trimModuleId(packEntry.id);
     if (!config.filter || util.startsWith(trimmedModuleId, config.filter)) {
         if (config.unuseddc) {
-            new TreeNode(packEntry).resolveDeps(2).draw();
+            new TreeNode(packEntry).resolveDeps().draw();
         } else {
             console.log(`- ${trimmedModuleId}`);
         }
@@ -166,7 +168,7 @@ class TreeNode {
         }
     }
 
-    resolveDeps(toDepth) {
+    resolveDeps(toDepth = config.depth) {
         this.dependencies = [];
 
         if (toDepth) {
