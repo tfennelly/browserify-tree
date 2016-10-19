@@ -40,17 +40,22 @@ if (process.argv.length < 3) {
     } else {
         console.log('');
         console.log('CLI options:');
-        console.log('   --unusedt     Unused in the dependency tree.');
-        console.log('   --unuseda     Unused anywhere i.e. no dependants in the tree, or among other unused.');
+        console.log('   --unusedt     Unused in the entry module\'s dependency tree.');
+        console.log('   --unuseda     Unused anywhere i.e. no dependants in entry module\'s tree, or among other unused.');
         console.log('');
-        console.log('   --filter      Unused module (see --unusedt and --unuseda) listing filter.');
+        console.log('   --filter      Unused module listing filter.');
+        console.log('                 (see --unusedt and --unuseda)');
         console.log('                 e.g. --filter=/node_modules/parse-asn1');
+        console.log('');
+        console.log('   --unuseddc    List dependencies of unused modules (what the unused module depends on).');
+        console.log('                 (see --unusedt and --unuseda)');
+        console.log('   --unuseddd    List dependants of unused modules (what depends on the unused module).');
+        console.log('                 (see --unusedt and --unuseda)');
         console.log('');
         console.log('   --depth       The depth to which dependencies are resolved (default 3).');
         console.log('                 Be careful changing this !!');
         console.log('');
-        console.log('   --unuseddc    List dependencies of unused modules (what it depends on).');
-        console.log('   --unuseddd    List dependants of unused modules (what depends on it).');
+        console.log("   --notree      Don't output the entry module's dependency tree.");
         console.log('');
     }
 }
