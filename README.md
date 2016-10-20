@@ -113,7 +113,16 @@ To install:
 npm install --save browserify-tree
 ```
 
+Example:
 
+```javascript
+const browserifyTree = require('browserify-tree);
+const unusedModules = browserifyTree.getUnusedModules('./target/classes/org/jenkins/ui/jsmodules/blueocean-usain/jenkins-js-extension.js'); // or pass the already unpackaged bundle object
+
+// Do something with unusedModules
+```
+
+Would probably use this in conjunction with the `browser-unpack` package.
 
 [Browserify]: http://browserify.org/
 [disc]: https://github.com/hughsk/disc/

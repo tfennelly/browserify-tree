@@ -42,6 +42,32 @@ exports.drawTree = function(bundlePath, userConfig) {
     }
 };
 
+exports.getUnusedModules = function(bundle) {
+    // Yeah not the nicest thing having
+    // this as a global. Might fix it later ;)
+    options = {
+        depth: 2
+    };
+
+    const bundlePackEntries  = unpackBundle(bundlePath);
+    const entryModule = findEntryPack(bundlePackEntries);
+
+    if (typeof entryModule.id === 'number') {
+        util.error('This bundle was generated with path IDs. Please regenerate with "fullPaths". See Browserify documentation.');
+    }
+
+    const tree = new TreeNode(entryModule, {bundlePackEntries: bundlePackEntries}).resolveDeps();
+    const twoWayPackEntryList = new TwoWayPackEntryList(bundlePackEntries);
+    const unusedPackEntries = twoWayPackEntryList.findUnusedPacksEntries(tree.getTreeModuleIds());
+    const unusedModuleIds = [];
+
+    unusedPackEntries.forEach((packEntry) => {
+        unusedModuleIds.push(packEntry.id);
+    });
+
+    return unusedModuleIds;
+};
+
 function unpackBundle(bundle) {
     if (typeof bundle !== 'string') {
         // Assume it is already unpacked...
@@ -279,12 +305,21 @@ class TwoWayPackEntryList {
         return undefined;
     }
 
-    listUnusedPacksInDepTree(treeModuleIds) {
-        console.log('\nThe following modules do not appear to be in use via the bundle entry module:\n');
+    findUnusedPacksEntries(treeModuleIds) {
+        const packEntries = [];
         this.bundlePackEntries.forEach((packEntry) => {
             if (treeModuleIds.indexOf(packEntry.id) === -1) {
-                this.printPackDetails(packEntry);
+                packEntries.push(packEntry);
             }
+        });
+        return packEntries;
+    }
+
+    listUnusedPacksInDepTree(treeModuleIds) {
+        console.log('\nThe following modules do not appear to be in use via the bundle entry module:\n');
+        const packEntries = this.findUnusedPacksEntries(treeModuleIds);
+        packEntries.forEach((packEntry) => {
+            this.printPackDetails(packEntry);
         });
     }
 
