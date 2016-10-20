@@ -120,11 +120,13 @@ class TreeNode {
         const treeModuleIds = this.getTreeModuleIds();
         if (treeModuleIds.indexOf(this.moduleId) === -1) {
             treeModuleIds.push(this.moduleId);
+            this.doResolveDeps = true;
+        } else {
+            this.doResolveDeps = false;
         }
 
         this.dependencies = undefined;
         this.depth = this.calcDepth();
-        this.node_modulesDepth = this.calcDepth(true);
     }
 
     draw(depth = 0) {
@@ -140,7 +142,7 @@ class TreeNode {
         let trimmedModuleId = trimModuleId(this.moduleId);
         const isAlreadyOnTree = (this.dependencies === undefined);
         console.log('=' + '  |'.repeat(depth)
-            + `--${trimmedModuleId} (${this.packEntry.source.length})${(isAlreadyOnTree?' (circular)':'')}`);
+            + `--${trimmedModuleId} (${this.packEntry.source.length})${(isAlreadyOnTree?' (skipped - see earlier resolve)':'')}`);
     }
 
     drawPathFromOldest() {
@@ -163,15 +165,11 @@ class TreeNode {
         }
     }
 
-    resolveDeps(toDepth = options.depth) {
-        this.dependencies = [];
-
-        if (toDepth) {
-            if (this.node_modulesDepth >= toDepth) {
-                // Don't resolve any deeper...
-                return this;
-            }
+    resolveDeps() {
+        if (!this.doResolveDeps) {
+            return this;
         }
+        this.dependencies = [];
 
         for (let dep in this.packEntry.deps) {
             if (this.packEntry.deps.hasOwnProperty(dep)) {
@@ -181,14 +179,7 @@ class TreeNode {
                 if (depModule) {
                     const depModuleNode = new TreeNode(depModule, {parentNode: self});
                     this.dependencies.push(depModuleNode);
-
-                    // Do not add dependency nodes for the depModule if there's already
-                    // a parent node for it i.e. make sure we do not get into a circular dep
-                    // infinite loop...
-                    if (!this.isParentNode(depModuleId)) {
-                        // No, it's ok to add the dependency nodes....
-                        depModuleNode.resolveDeps(toDepth);
-                    }
+                    depModuleNode.resolveDeps();
                 } else {
                     console.warn(`*** No module having Id '${depModuleId}' found in bundle.`);
                 }
