@@ -52,11 +52,14 @@ if (process.argv.length < 3) {
         console.log('   --unuseddd    List dependants of unused modules (what depends on the unused module).');
         console.log('                 (see --unusedt and --unuseda)');
         console.log('');
-        console.log('   --depth       The depth to which dependencies are resolved (default 3).');
-        console.log('                 Be careful changing this !!');
+        console.log('   --depth       The depth to which external dependencies are resolved (default 2).');
+        console.log('                 By "external" we mean inside node_modules. Be careful changing this !!');
         console.log('                 e.g. --depth=6');
         console.log('');
         console.log("   --notree      Don't output the entry module's dependency tree.");
+        console.log('');
+        console.log('Example:');
+        console.log("   browserify-tree ./target/classes/org/jenkins/pluginx/pluginx_bundlea.js");
         console.log('');
     }
 }

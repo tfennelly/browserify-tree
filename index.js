@@ -12,7 +12,7 @@ exports.drawTree = function(bundlePath, userConfig) {
     }
 
     config = Object.assign({
-        depth: 3
+        depth: 2
     }, userConfig);
 
     const bundleContent = fs.readFileSync(bundlePath, "utf-8");
@@ -85,6 +85,7 @@ class TreeNode {
 
         this.dependencies = undefined;
         this.depth = this.calcDepth();
+        this.node_modulesDepth = this.calcDepth(true);
     }
 
     draw(depth = 0) {
@@ -127,7 +128,7 @@ class TreeNode {
         this.dependencies = [];
 
         if (toDepth) {
-            if (this.depth >= toDepth) {
+            if (this.node_modulesDepth >= toDepth) {
                 // Don't resolve any deeper...
                 return this;
             }
@@ -182,11 +183,18 @@ class TreeNode {
         return false;
     }
 
-    calcDepth() {
+    calcDepth(inNodeModules) {
         let depth = 0;
-        let parentNode = this.parentNode;
+        let parentNode = this;
 
         while(parentNode) {
+            if (inNodeModules && parentNode.moduleId.indexOf('/node_modules/') === -1) {
+                // parenNode is not referring to a module that's inside /node_modules/
+                // i.e. must be referring to a src module. Supplying of the inNodeModules
+                // arg tells us not to include src modules in the depth calc i.e. we just
+                // want to know how deep is the external dependency graph.
+                break;
+            }
             depth++;
             parentNode = parentNode.parentNode;
         }
