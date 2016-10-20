@@ -4,7 +4,6 @@ const util = require('./js/util');
 
 let bundlePackEntries;
 let tree;
-const treeModuleIds = [];
 let config;
 
 exports.drawTree = function(bundlePath, userConfig) {
@@ -35,12 +34,12 @@ exports.drawTree = function(bundlePath, userConfig) {
         console.log('------------------------------------------------');
     }
 
-    var hasUnused = (treeModuleIds.length < bundlePackEntries.length);
+    var hasUnused = (tree.getTreeModuleIds().length < bundlePackEntries.length);
     if (hasUnused) {
         const twoWayPackEntryList = new TwoWayPackEntryList(bundlePackEntries);
 
         if (config.unusedt) {
-            twoWayPackEntryList.listUnusedPacksInDepTree(treeModuleIds);
+            twoWayPackEntryList.listUnusedPacksInDepTree(tree.getTreeModuleIds());
             console.log('------------------------------------------------');
         }
         if (config.unuseda) {
@@ -79,10 +78,8 @@ class TreeNode {
         this.parentNode = parentNode;
         this.moduleId = packEntry.id;
 
-        // Only track the moduleIds while we are constructing the
-        // global tree reference. Other tree constructions should not
-        // add to the list.
-        if (!tree && treeModuleIds.indexOf(this.moduleId) === -1) {
+        const treeModuleIds = this.getTreeModuleIds();
+        if (treeModuleIds.indexOf(this.moduleId) === -1) {
             treeModuleIds.push(this.moduleId);
         }
 
@@ -158,6 +155,21 @@ class TreeNode {
         }
 
         return this;
+    }
+
+    getTreeModuleIds() {
+        const treeRootNode = this.getRootNode();
+        if (treeRootNode.treeModuleIds === undefined) {
+            treeRootNode.treeModuleIds = []
+        }
+        return treeRootNode.treeModuleIds;
+    }
+
+    getRootNode() {
+        if (!this.parentNode) {
+            return this;
+        }
+        return this.parentNode.getRootNode();
     }
 
     isParentNode(moduleId) {
