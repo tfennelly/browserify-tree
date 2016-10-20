@@ -37,60 +37,18 @@ exports.drawTree = function(bundlePath, userConfig) {
 
     var hasUnused = (treeModuleIds.length < bundlePackEntries.length);
     if (hasUnused) {
-        const twoWayPackEntryList = new TwoWayPackEntryList();
+        const twoWayPackEntryList = new TwoWayPackEntryList(bundlePackEntries);
 
         if (config.unusedt) {
-            listUnusedPacksInDepTree(twoWayPackEntryList);
+            twoWayPackEntryList.listUnusedPacksInDepTree(treeModuleIds);
             console.log('------------------------------------------------');
         }
         if (config.unuseda) {
-            listUnusedPacksAnywhere(twoWayPackEntryList);
+            twoWayPackEntryList.listUnusedPacksAnywhere();
             console.log('------------------------------------------------');
         }
     }
 };
-
-function listUnusedPacksInDepTree(twoWayPackEntryList) {
-    console.log('\nThe following modules do not appear to be in use via the bundle entry module:\n');
-    bundlePackEntries.forEach((packEntry) => {
-        if (treeModuleIds.indexOf(packEntry.id) === -1) {
-            printPackDetails(packEntry, twoWayPackEntryList);
-        }
-    });
-}
-
-function listUnusedPacksAnywhere(twoWayPackEntryList) {
-    console.log('\nThe following modules do not appear to be in use anywhere i.e. no dependants:\n');
-
-    // Run through twoWayPackEntryList and print those that
-    // have zero dependants...
-    twoWayPackEntryList.forEach((twoWayPackEntry) => {
-        if (twoWayPackEntry.dependants.length === 0) {
-            printPackDetails(twoWayPackEntry.packEntry, twoWayPackEntryList);
-        }
-    });
-}
-
-function printPackDetails(packEntry, twoWayPackEntryList) {
-    let trimmedModuleId = trimModuleId(packEntry.id);
-    if (!config.filter || util.startsWith(trimmedModuleId, config.filter)) {
-        if (config.unuseddc) {
-            new TreeNode(packEntry).resolveDeps().draw();
-        } else {
-            console.log(`- ${trimmedModuleId}`);
-        }
-        if (config.unuseddd) {
-            const twoWayPackEntry = twoWayPackEntryList.findByPackId(packEntry.id);
-            console.log(`    Dependants (depending on this module):`);
-            twoWayPackEntry.dependants.forEach((dependant) => {
-                console.log(`    - ${trimModuleId(dependant)}`);
-            });
-        }
-        if (config.unuseddc || config.unuseddd) {
-            console.log('');
-        }
-    }
-}
 
 function findEntryPack() {
     return findPackEntries((packEntry) => packEntry.entry);
@@ -248,8 +206,10 @@ class TwoWayPackEntry {
 
 class TwoWayPackEntryList {
 
-    constructor() {
+    constructor(bundlePackEntries) {
         this.list = [];
+        this.bundlePackEntries = bundlePackEntries;
+
         bundlePackEntries.forEach((packEntry) => {
             this.list.push(new TwoWayPackEntry(packEntry));
         });
@@ -280,4 +240,45 @@ class TwoWayPackEntryList {
         return undefined;
     }
 
+    listUnusedPacksInDepTree(treeModuleIds) {
+        console.log('\nThe following modules do not appear to be in use via the bundle entry module:\n');
+        this.bundlePackEntries.forEach((packEntry) => {
+            if (treeModuleIds.indexOf(packEntry.id) === -1) {
+                this.printPackDetails(packEntry);
+            }
+        });
+    }
+
+    listUnusedPacksAnywhere() {
+        console.log('\nThe following modules do not appear to be in use anywhere i.e. no dependants:\n');
+
+        // Run through twoWayPackEntryList and print those that
+        // have zero dependants...
+        this.forEach((twoWayPackEntry) => {
+            if (twoWayPackEntry.dependants.length === 0) {
+                this.printPackDetails(twoWayPackEntry.packEntry);
+            }
+        });
+    }
+
+    printPackDetails(packEntry) {
+        let trimmedModuleId = trimModuleId(packEntry.id);
+        if (!config.filter || util.startsWith(trimmedModuleId, config.filter)) {
+            if (config.unuseddc) {
+                new TreeNode(packEntry).resolveDeps().draw();
+            } else {
+                console.log(`- ${trimmedModuleId}`);
+            }
+            if (config.unuseddd) {
+                const twoWayPackEntry = this.findByPackId(packEntry.id);
+                console.log(`    Dependants (depending on this module):`);
+                twoWayPackEntry.dependants.forEach((dependant) => {
+                    console.log(`    - ${trimModuleId(dependant)}`);
+                });
+            }
+            if (config.unuseddc || config.unuseddd) {
+                console.log('');
+            }
+        }
+    }
 }
