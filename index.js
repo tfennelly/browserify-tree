@@ -49,7 +49,7 @@ exports.getUnusedModules = function(bundle) {
         depth: 2
     };
 
-    const bundlePackEntries  = unpackBundle(bundlePath);
+    const bundlePackEntries  = unpackBundle(bundle);
     const entryModule = findEntryPack(bundlePackEntries);
 
     if (typeof entryModule.id === 'number') {

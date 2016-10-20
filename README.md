@@ -116,7 +116,7 @@ npm install --save browserify-tree
 Example:
 
 ```javascript
-const browserifyTree = require('browserify-tree);
+const browserifyTree = require('browserify-tree');
 const unusedModules = browserifyTree.getUnusedModules('./target/classes/org/jenkins/ui/jsmodules/blueocean-usain/jenkins-js-extension.js'); // or pass the already unpackaged bundle object
 
 // Do something with unusedModules
