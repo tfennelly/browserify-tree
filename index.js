@@ -2,23 +2,16 @@ const fs = require('fs');
 const unpack = require('browser-unpack');
 const util = require('./js/util');
 
-let bundlePackEntries;
-let tree;
-let config;
+let options;
 
 exports.drawTree = function(bundlePath, userConfig) {
-    if (!fs.existsSync(bundlePath)) {
-        util.error(`No such file '${bundlePath}'`);
-    }
+    const bundlePackEntries  = unpackBundle(bundlePath);
 
-    config = Object.assign({
+    options = Object.assign({
         depth: 2
     }, userConfig);
 
-    const bundleContent = fs.readFileSync(bundlePath, "utf-8");
-    bundlePackEntries  = unpack(bundleContent);
-
-    const entryModule = findEntryPack();
+    const entryModule = findEntryPack(bundlePackEntries);
 
     if (typeof entryModule.id === 'number') {
         util.error('This bundle was generated with path IDs. Please regenerate with "fullPaths". See Browserify documentation.');
@@ -26,9 +19,9 @@ exports.drawTree = function(bundlePath, userConfig) {
 
     console.log(`\nThe bundle entry module is:\n\t${entryModule.id}`);
 
-    tree = new TreeNode(entryModule).resolveDeps();
+    const tree = new TreeNode(entryModule, {bundlePackEntries: bundlePackEntries}).resolveDeps();
 
-    if (!config.notree) {
+    if (!options.notree) {
         console.log('------------------------------------------------');
         tree.draw();
         console.log('------------------------------------------------');
@@ -38,26 +31,41 @@ exports.drawTree = function(bundlePath, userConfig) {
     if (hasUnused) {
         const twoWayPackEntryList = new TwoWayPackEntryList(bundlePackEntries);
 
-        if (config.unusedt) {
+        if (options.unusedt) {
             twoWayPackEntryList.listUnusedPacksInDepTree(tree.getTreeModuleIds());
             console.log('------------------------------------------------');
         }
-        if (config.unuseda) {
+        if (options.unuseda) {
             twoWayPackEntryList.listUnusedPacksAnywhere();
             console.log('------------------------------------------------');
         }
     }
 };
 
-function findEntryPack() {
-    return findPackEntries((packEntry) => packEntry.entry);
+function unpackBundle(bundle) {
+    if (typeof bundle !== 'string') {
+        // Assume it is already unpacked...
+        return bundle;
+    }
+
+    if (!fs.existsSync(bundle)) {
+        util.error(`No such file '${bundle}'`);
+    }
+
+    const bundleContent = fs.readFileSync(bundle, "utf-8");
+
+    return unpack(bundleContent);
 }
 
-function findPackById(id) {
-    return findPackEntries((packEntry) => packEntry.id === id);
+function findEntryPack(bundlePackEntries) {
+    return findPackEntries(bundlePackEntries, (packEntry) => packEntry.entry);
 }
 
-function findPackEntries(filterFunc) {
+function findPackById(id, bundlePackEntries) {
+    return findPackEntries(bundlePackEntries, (packEntry) => packEntry.id === id);
+}
+
+function findPackEntries(bundlePackEntries, filterFunc) {
     var resultSet = bundlePackEntries.filter(filterFunc);
     if (resultSet.length === 1) {
         return resultSet[0];
@@ -73,10 +81,15 @@ function trimModuleId(moduleId) {
 
 class TreeNode {
 
-    constructor(packEntry, parentNode) {
+    constructor(packEntry, constructionConfig = {}) {
         this.packEntry = packEntry;
-        this.parentNode = parentNode;
+        this.parentNode = constructionConfig.parentNode;
+        this.bundlePackEntries = constructionConfig.bundlePackEntries;
         this.moduleId = packEntry.id;
+
+        if (!this.parentNode && !this.bundlePackEntries) {
+            util.error('Invalid TreeNode construction. Must supply either "parentNode" or "bundlePackEntries" in config object.');
+        }
 
         const treeModuleIds = this.getTreeModuleIds();
         if (treeModuleIds.indexOf(this.moduleId) === -1) {
@@ -124,7 +137,7 @@ class TreeNode {
         }
     }
 
-    resolveDeps(toDepth = config.depth) {
+    resolveDeps(toDepth = options.depth) {
         this.dependencies = [];
 
         if (toDepth) {
@@ -137,9 +150,10 @@ class TreeNode {
         for (let dep in this.packEntry.deps) {
             if (this.packEntry.deps.hasOwnProperty(dep)) {
                 const depModuleId = this.packEntry.deps[dep];
-                const depModule = findPackById(depModuleId);
+                const self = this;
+                const depModule = findPackById(depModuleId, self.getBundlePackEntries());
                 if (depModule) {
-                    const depModuleNode = new TreeNode(depModule, this);
+                    const depModuleNode = new TreeNode(depModule, {parentNode: self});
                     this.dependencies.push(depModuleNode);
 
                     // Do not add dependency nodes for the depModule if there's already
@@ -164,6 +178,11 @@ class TreeNode {
             treeRootNode.treeModuleIds = []
         }
         return treeRootNode.treeModuleIds;
+    }
+
+    getBundlePackEntries() {
+        const treeRootNode = this.getRootNode();
+        return treeRootNode.bundlePackEntries;
     }
 
     getRootNode() {
@@ -230,7 +249,7 @@ class TwoWayPackEntryList {
         this.list = [];
         this.bundlePackEntries = bundlePackEntries;
 
-        bundlePackEntries.forEach((packEntry) => {
+        this.bundlePackEntries.forEach((packEntry) => {
             this.list.push(new TwoWayPackEntry(packEntry));
         });
 
@@ -283,20 +302,21 @@ class TwoWayPackEntryList {
 
     printPackDetails(packEntry) {
         let trimmedModuleId = trimModuleId(packEntry.id);
-        if (!config.filter || util.startsWith(trimmedModuleId, config.filter)) {
-            if (config.unuseddc) {
-                new TreeNode(packEntry).resolveDeps().draw();
+        if (!options.filter || util.startsWith(trimmedModuleId, options.filter)) {
+            if (options.unuseddc) {
+                const self = this;
+                new TreeNode(packEntry, {bundlePackEntries: self.bundlePackEntries}).resolveDeps().draw();
             } else {
                 console.log(`- ${trimmedModuleId}`);
             }
-            if (config.unuseddd) {
+            if (options.unuseddd) {
                 const twoWayPackEntry = this.findByPackId(packEntry.id);
                 console.log(`    Dependants (depending on this module):`);
                 twoWayPackEntry.dependants.forEach((dependant) => {
                     console.log(`    - ${trimModuleId(dependant)}`);
                 });
             }
-            if (config.unuseddc || config.unuseddd) {
+            if (options.unuseddc || options.unuseddd) {
                 console.log('');
             }
         }
