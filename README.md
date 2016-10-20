@@ -27,10 +27,6 @@ CLI options:
    --unuseddd    List dependants of unused modules (what depends on the unused module).
                  (see --unusedt and --unuseda)
 
-   --depth       The depth to which dependencies are resolved (default 3).
-                 Be careful changing this !!
-                 e.g. --depth=6
-
    --notree      Don't output the entry module's dependency tree.
 ```
 
