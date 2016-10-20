@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const browserifyTree = require('./index.js');
-const util = require('./util');
+const util = require('./js/util');
 
 if (process.argv.length < 3) {
     util.error('No bundle file path specified.');

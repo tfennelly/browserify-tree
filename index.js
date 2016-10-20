@@ -1,6 +1,6 @@
 const fs = require('fs');
 const unpack = require('browser-unpack');
-const util = require('./util');
+const util = require('./js/util');
 
 let bundlePackEntries;
 let tree;
