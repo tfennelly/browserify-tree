@@ -14,7 +14,7 @@ exports.drawTree = function(bundlePath, userConfig) {
     const entryModule = findEntryPack(bundlePackEntries);
 
     if (typeof entryModule.id === 'number') {
-        util.error('This bundle was generated with path IDs. Please regenerate with "fullPaths". See Browserify documentation.');
+        util.error('This bundle was generated with path IDs. Please regenerate with "full paths". See Browserify documentation. Use "--full-paths" if using @jenkins-cd/js-builder.');
     }
 
     console.log(`\nThe bundle entry module is:\n\t${entryModule.id}`);
@@ -142,7 +142,7 @@ class TreeNode {
         let trimmedModuleId = trimModuleId(this.moduleId);
         const isAlreadyOnTree = (this.dependencies === undefined);
         console.log('=' + '  |'.repeat(depth)
-            + `--${trimmedModuleId} (${this.packEntry.source.length})${(isAlreadyOnTree?' (skipped - see earlier resolve)':'')}`);
+            + `--${trimmedModuleId} (${this.packEntry.source.length})${(isAlreadyOnTree?' (skipped - see earlier resolve    )':'')}`);
     }
 
     drawPathFromOldest() {
