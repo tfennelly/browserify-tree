@@ -27,12 +27,12 @@ exports.drawTree = function(bundlePath, userConfig) {
         console.log('------------------------------------------------');
     }
 
-    var hasUnused = (tree.getTreeModuleIds().length < bundlePackEntries.length);
+    var hasUnused = (tree.getTreeNodes().length < bundlePackEntries.length);
     if (hasUnused) {
         const twoWayPackEntryList = new TwoWayPackEntryList(bundlePackEntries);
 
         if (options.unusedt) {
-            twoWayPackEntryList.listUnusedPacksInDepTree(tree.getTreeModuleIds());
+            twoWayPackEntryList.listUnusedPacksInDepTree(tree.getTreeNodes());
             console.log('------------------------------------------------');
         }
         if (options.unuseda) {
@@ -58,7 +58,7 @@ exports.getUnusedModules = function(bundle) {
 
     const tree = new TreeNode(entryModule, {bundlePackEntries: bundlePackEntries}).resolveDeps();
     const twoWayPackEntryList = new TwoWayPackEntryList(bundlePackEntries);
-    const unusedPackEntries = twoWayPackEntryList.findUnusedPacksEntries(tree.getTreeModuleIds());
+    const unusedPackEntries = twoWayPackEntryList.findUnusedPacksEntries(tree.getTreeNodes());
     const unusedModuleIds = [];
 
     unusedPackEntries.forEach((packEntry) => {
@@ -112,21 +112,35 @@ class TreeNode {
         this.parentNode = constructionConfig.parentNode;
         this.bundlePackEntries = constructionConfig.bundlePackEntries;
         this.moduleId = packEntry.id;
+        this.srclen = 0;
 
         if (!this.parentNode && !this.bundlePackEntries) {
             util.error('Invalid TreeNode construction. Must supply either "parentNode" or "bundlePackEntries" in config object.');
         }
 
-        const treeModuleIds = this.getTreeModuleIds();
-        if (treeModuleIds.indexOf(this.moduleId) === -1) {
-            treeModuleIds.push(this.moduleId);
-            this.doResolveDeps = true;
-        } else {
-            this.doResolveDeps = false;
+        if (this.getTreeNode(this.moduleId) === undefined) {
+            this.getTreeNodes().push(this);
         }
 
         this.dependencies = undefined;
         this.depth = this.calcDepth();
+    }
+
+    calcSrcLen() {
+        // Do not want to include the src length for a module more than once.
+        // So, only calculate it if it's the "recorded" TreeNode instance of
+        // the module, of which there's ever only one.
+        if (!this.isRecordedTreeNode()) {
+            return 0;
+        }
+
+        this.srclen = this.packEntry.source.length;
+        if (this.dependencies) {
+            this.dependencies.forEach((dependency) => {
+                this.srclen += dependency.calcSrcLen();
+            })
+        }
+        return this.srclen;
     }
 
     draw(depth = 0) {
@@ -142,7 +156,7 @@ class TreeNode {
         let trimmedModuleId = trimModuleId(this.moduleId);
         const isAlreadyOnTree = (this.dependencies === undefined);
         console.log('=' + '  |'.repeat(depth)
-            + `--${trimmedModuleId} (${this.packEntry.source.length})${(isAlreadyOnTree?' (skipped - see earlier resolve    )':'')}`);
+            + `--${trimmedModuleId} (${this.srclen})${(isAlreadyOnTree?' (skipped - see earlier resolve)':'')}`);
     }
 
     drawPathFromOldest() {
@@ -166,7 +180,12 @@ class TreeNode {
     }
 
     resolveDeps() {
-        if (!this.doResolveDeps) {
+        if (!this.isRecordedTreeNode()) {
+            // Only one TreeNode instance is stored in the treeNode list for
+            // each module. If "this" node is not the recorded node then
+            // we skip resolving of deps etc (because it's already done - noise)
+            // and we don't add the srclen because that srclen is already included
+            // in the bundle.
             return this;
         }
         this.dependencies = [];
@@ -186,15 +205,35 @@ class TreeNode {
             }
         }
 
+        if (this.getRootNode() === this) {
+            this.calcSrcLen();
+        }
+
         return this;
     }
 
-    getTreeModuleIds() {
+    getTreeNodes() {
         const treeRootNode = this.getRootNode();
-        if (treeRootNode.treeModuleIds === undefined) {
-            treeRootNode.treeModuleIds = []
+        if (treeRootNode.treeNodes === undefined) {
+            treeRootNode.treeNodes = [];
         }
-        return treeRootNode.treeModuleIds;
+        return treeRootNode.treeNodes;
+    }
+
+    getTreeNode(moduleId) {
+        const treeNodes = this.getTreeNodes();
+        for (let i = 0; i < treeNodes.length; i++) {
+            if (treeNodes[i].moduleId === moduleId) {
+                return treeNodes[i];
+            }
+        }
+        return undefined;
+    }
+
+    isRecordedTreeNode() {
+        // Only one TreeNode instance is stored/recorder in the treeNode list for
+        // each module (by ID).
+        return (this.getTreeNode(this.moduleId) === this);
     }
 
     getBundlePackEntries() {
@@ -296,19 +335,19 @@ class TwoWayPackEntryList {
         return undefined;
     }
 
-    findUnusedPacksEntries(treeModuleIds) {
+    findUnusedPacksEntries(tree) {
         const packEntries = [];
         this.bundlePackEntries.forEach((packEntry) => {
-            if (treeModuleIds.indexOf(packEntry.id) === -1) {
+            if (tree.getTreeNode(packEntry.id) === undefined) {
                 packEntries.push(packEntry);
             }
         });
         return packEntries;
     }
 
-    listUnusedPacksInDepTree(treeModuleIds) {
+    listUnusedPacksInDepTree(tree) {
         console.log('\nThe following modules do not appear to be in use via the bundle entry module:\n');
-        const packEntries = this.findUnusedPacksEntries(treeModuleIds);
+        const packEntries = this.findUnusedPacksEntries(tree);
         packEntries.forEach((packEntry) => {
             this.printPackDetails(packEntry);
         });
