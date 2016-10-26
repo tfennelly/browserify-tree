@@ -64,7 +64,6 @@ Sorted by source length/size:
 =--/node_modules/@jenkins-cd/js-modules/js/Version.js (2965)
 =--/node_modules/@jenkins-cd/js-modules/js/promise.js (1874)
 =--/node_modules/react/react.js (84)
-
 ------------------------------------------------
 
 --help for options

@@ -5,21 +5,15 @@ const util = require('./js/util');
 let options;
 
 exports.drawTree = function(bundlePath, userConfig) {
-    const bundlePackEntries  = unpackBundle(bundlePath);
+    const twoWayPackEntryList = unpackBundle(bundlePath);
 
     options = Object.assign({
         depth: 2
     }, userConfig);
 
-    const entryModule = findEntryPack(bundlePackEntries);
+    console.log(`\nThe bundle entry module is:\n\t${twoWayPackEntryList.entryModule.id}`);
 
-    if (typeof entryModule.id === 'number') {
-        util.error('This bundle was generated with path IDs. Please regenerate with "full paths". See Browserify documentation. Use "--full-paths" if using @jenkins-cd/js-builder.');
-    }
-
-    console.log(`\nThe bundle entry module is:\n\t${entryModule.id}`);
-
-    const tree = new TreeNode(entryModule, {bundlePackEntries: bundlePackEntries}).resolveDeps();
+    const tree = twoWayPackEntryList.tree;
 
     if (!options.notree) {
         console.log('------------------------------------------------');
@@ -27,14 +21,11 @@ exports.drawTree = function(bundlePath, userConfig) {
         console.log('');
         console.log('Sorted by source length/size:');
         tree.outputModulesBySrcLen();
-        console.log('');
         console.log('------------------------------------------------');
     }
 
-    var hasUnused = (tree.getTreeNodes().length < bundlePackEntries.length);
+    var hasUnused = (tree.getTreeNodes().length < twoWayPackEntryList.bundlePackEntries.length);
     if (hasUnused) {
-        const twoWayPackEntryList = new TwoWayPackEntryList(bundlePackEntries);
-
         if (options.unusedt) {
             twoWayPackEntryList.listUnusedPacksInDepTree(tree.getTreeNodes());
             console.log('------------------------------------------------');
@@ -53,16 +44,8 @@ exports.getUnusedModules = function(bundle) {
         depth: 2
     };
 
-    const bundlePackEntries  = unpackBundle(bundle);
-    const entryModule = findEntryPack(bundlePackEntries);
-
-    if (typeof entryModule.id === 'number') {
-        util.error('This bundle was generated with path IDs. Please regenerate with "fullPaths". See Browserify documentation.');
-    }
-
-    const tree = new TreeNode(entryModule, {bundlePackEntries: bundlePackEntries}).resolveDeps();
-    const twoWayPackEntryList = new TwoWayPackEntryList(bundlePackEntries);
-    const unusedPackEntries = twoWayPackEntryList.findUnusedPacksEntries(tree.getTreeNodes());
+    const twoWayPackEntryList = unpackBundle(bundle);
+    const unusedPackEntries = twoWayPackEntryList.findUnusedPacksEntries();
     const unusedModuleIds = [];
 
     unusedPackEntries.forEach((packEntry) => {
@@ -84,7 +67,7 @@ function unpackBundle(bundle) {
 
     const bundleContent = fs.readFileSync(bundle, "utf-8");
 
-    return unpack(bundleContent);
+    return new TwoWayPackEntryList(unpack(bundleContent));
 }
 
 function findEntryPack(bundlePackEntries) {
@@ -315,6 +298,13 @@ class TwoWayPackEntryList {
     constructor(bundlePackEntries) {
         this.list = [];
         this.bundlePackEntries = bundlePackEntries;
+        this.entryModule = findEntryPack(bundlePackEntries);
+
+        if (typeof this.entryModule.id === 'number') {
+            util.error('This bundle was generated with path IDs. Please regenerate with "full paths". See Browserify documentation. Use "--full-paths" if using @jenkins-cd/js-builder.');
+        }
+
+        this.tree = new TreeNode(this.entryModule, {bundlePackEntries: bundlePackEntries}).resolveDeps();
 
         this.bundlePackEntries.forEach((packEntry) => {
             this.list.push(new TwoWayPackEntry(packEntry));
@@ -346,19 +336,19 @@ class TwoWayPackEntryList {
         return undefined;
     }
 
-    findUnusedPacksEntries(tree) {
+    findUnusedPacksEntries() {
         const packEntries = [];
         this.bundlePackEntries.forEach((packEntry) => {
-            if (tree.getTreeNode(packEntry.id) === undefined) {
+            if (this.tree.getTreeNode(packEntry.id) === undefined) {
                 packEntries.push(packEntry);
             }
         });
         return packEntries;
     }
 
-    listUnusedPacksInDepTree(tree) {
+    listUnusedPacksInDepTree() {
         console.log('\nThe following modules do not appear to be in use via the bundle entry module:\n');
-        const packEntries = this.findUnusedPacksEntries(tree);
+        const packEntries = this.findUnusedPacksEntries(this.tree);
         packEntries.forEach((packEntry) => {
             this.printPackDetails(packEntry);
         });
