@@ -53,6 +53,18 @@ The bundle entry module is:
 =  |  |--/node_modules/react/react.js (84)
 =  |  |  |--/node_modules/@jenkins-cd/js-modules/js/index.js (0) (skipped - see earlier resolve)
 =  |--/node_modules/@jenkins-cd/js-modules/js/index.js (0) (skipped - see earlier resolve)
+
+Sorted by source length/size:
+=--/target/jenkins-js-extension.jsx (49952)
+=--/src/main/js/Usain.jsx (48047)
+=--/node_modules/@jenkins-cd/blueocean-core-js/dist/js/index.js (42790)
+=--/node_modules/@jenkins-cd/js-modules/js/index.js (42660)
+=--/node_modules/@jenkins-cd/js-modules/js/internal.js (23980)
+=--/node_modules/@jenkins-cd/js-modules/js/ModuleSpec.js (8844)
+=--/node_modules/@jenkins-cd/js-modules/js/Version.js (2965)
+=--/node_modules/@jenkins-cd/js-modules/js/promise.js (1874)
+=--/node_modules/react/react.js (84)
+
 ------------------------------------------------
 
 --help for options
