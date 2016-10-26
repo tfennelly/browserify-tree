@@ -24,6 +24,10 @@ exports.drawTree = function(bundlePath, userConfig) {
     if (!options.notree) {
         console.log('------------------------------------------------');
         tree.draw();
+        console.log('');
+        console.log('Sorted by source length/size:');
+        tree.outputModulesBySrcLen();
+        console.log('');
         console.log('------------------------------------------------');
     }
 
@@ -150,6 +154,15 @@ class TreeNode {
                 this.dependencies[i].draw(depth + 1);
             }
         }
+    }
+
+    outputModulesBySrcLen() {
+        const treeNodesBySize = this.getTreeNodes().slice().sort((a, b) => {
+            return b.srclen - a.srclen;
+        });
+        treeNodesBySize.forEach((treeNode) => {
+            treeNode.outputModuleId(0);
+        })
     }
 
     outputModuleId(depth = this.depth) {
