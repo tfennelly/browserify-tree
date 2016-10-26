@@ -8,7 +8,6 @@ exports.drawTree = function(bundlePath, userConfig) {
     const twoWayPackEntryList = unpackBundle(bundlePath);
 
     options = Object.assign({
-        depth: 2
     }, userConfig);
 
     console.log(`\nThe bundle entry module is:\n\t${twoWayPackEntryList.entryModule.id}`);
@@ -27,7 +26,7 @@ exports.drawTree = function(bundlePath, userConfig) {
     var hasUnused = (tree.getTreeNodes().length < twoWayPackEntryList.bundlePackEntries.length);
     if (hasUnused) {
         if (options.unusedt) {
-            twoWayPackEntryList.listUnusedPacksInDepTree(tree.getTreeNodes());
+            twoWayPackEntryList.listUnusedPacksInDepTree();
             console.log('------------------------------------------------');
         }
         if (options.unuseda) {
@@ -37,13 +36,13 @@ exports.drawTree = function(bundlePath, userConfig) {
     }
 };
 
+/**
+ * Get a list of bundle module IDs for bundle modules that are not
+ * in use  on the bundle entry module's dependency graph.
+ * @param bundle The bundle file path, or the unpacked bundle.
+ * @returns {Array}
+ */
 exports.getUnusedModules = function(bundle) {
-    // Yeah not the nicest thing having
-    // this as a global. Might fix it later ;)
-    options = {
-        depth: 2
-    };
-
     const twoWayPackEntryList = unpackBundle(bundle);
     const unusedPackEntries = twoWayPackEntryList.findUnusedPacksEntries();
     const unusedModuleIds = [];
@@ -55,10 +54,30 @@ exports.getUnusedModules = function(bundle) {
     return unusedModuleIds;
 };
 
+/**
+ * Get a list of bundle module IDs for bundle modules that are not
+ * loadable for some reason e.g. they "require" unresolvable modules.
+ * @param bundle The bundle file path, or the unpacked bundle.
+ * @returns {Array}
+ */
+exports.getUnloadableModules = function(bundle) {
+    const twoWayPackEntryList = unpackBundle(bundle);
+    const unloadableModuleIds = [];
+
+    twoWayPackEntryList.tree.getTreeNodes().forEach((treeNode) => {
+        // Add other reasons here as we evolve...
+        if (treeNode.hasUnresolvableDeps) {
+            unloadableModuleIds.push(treeNode.moduleId);
+        }
+    });
+
+    return unloadableModuleIds;
+};
+
 function unpackBundle(bundle) {
     if (typeof bundle !== 'string') {
         // Assume it is already unpacked...
-        return bundle;
+        return new TwoWayPackEntryList(bundle);
     }
 
     if (!fs.existsSync(bundle)) {
@@ -195,6 +214,8 @@ class TreeNode {
                     const depModuleNode = new TreeNode(depModule, {parentNode: self});
                     this.dependencies.push(depModuleNode);
                     depModuleNode.resolveDeps();
+                } else {
+                    this.hasUnresolvableDeps = true;
                 }
             }
         }
@@ -319,8 +340,6 @@ class TwoWayPackEntryList {
                     if (depModule2Way) {
                         twoWayPackEntry.addDependency(depModule2Way.packEntry.id);
                         depModule2Way.addDependant(twoWayPackEntry.packEntry.id);
-                    } else {
-                        console.warn(`*** No module having Id '${depModuleId}' found in bundle.`);
                     }
                 }
             }
@@ -348,7 +367,7 @@ class TwoWayPackEntryList {
 
     listUnusedPacksInDepTree() {
         console.log('\nThe following modules do not appear to be in use via the bundle entry module:\n');
-        const packEntries = this.findUnusedPacksEntries(this.tree);
+        const packEntries = this.findUnusedPacksEntries();
         packEntries.forEach((packEntry) => {
             this.printPackDetails(packEntry);
         });

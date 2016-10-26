@@ -123,7 +123,11 @@ To install:
 npm install --save browserify-tree
 ```
 
-Example:
+Would probably use this in conjunction with the `browser-unpack` package.
+
+## getUnusedModules
+
+Get a list of bundle module IDs for bundle modules that are not in use  on the bundle entry module's dependency graph:
 
 ```javascript
 const browserifyTree = require('browserify-tree');
@@ -132,7 +136,16 @@ const unusedModules = browserifyTree.getUnusedModules('./target/classes/org/jenk
 // Do something with unusedModules
 ```
 
-Would probably use this in conjunction with the `browser-unpack` package.
+## getUnloadableModules
+
+Get a list of bundle module IDs for bundle modules that are not loadable for some reason e.g. they "require" unresolvable modules:
+
+```javascript
+const browserifyTree = require('browserify-tree');
+const unloadableModules = browserifyTree.getUnloadableModules('./target/classes/org/jenkins/ui/jsmodules/blueocean-usain/jenkins-js-extension.js'); // or pass the already unpackaged bundle object
+
+// Do something with unloadableModules e.g. stub them out of the bundle with an exception.
+```
 
 [Browserify]: http://browserify.org/
 [disc]: https://github.com/hughsk/disc/
