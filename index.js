@@ -199,8 +199,6 @@ class TreeNode {
                     const depModuleNode = new TreeNode(depModule, {parentNode: self});
                     this.dependencies.push(depModuleNode);
                     depModuleNode.resolveDeps();
-                } else {
-                    console.warn(`*** No module having Id '${depModuleId}' found in bundle.`);
                 }
             }
         }
