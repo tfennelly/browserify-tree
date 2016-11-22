@@ -48,7 +48,14 @@ exports.getUnusedModules = function(bundle) {
     const unusedModuleIds = [];
 
     unusedPackEntries.forEach((packEntry) => {
-        unusedModuleIds.push(packEntry.id);
+        // And also need to make sure that the pack is not depended on via
+        // a browserify dedupe entry. In this particular case, the pack ID might
+        // not be listed in the deps for any packages, but could actually still be
+        // depended on (be in use by) a dedupe pack entry.
+        var dedupeReferencePackEntries = twoWayPackEntryList.findDedupeReferencePackEntries(packEntry.id);
+        if (dedupeReferencePackEntries.length === 0) {
+            unusedModuleIds.push(packEntry.id);
+        }
     });
 
     return unusedModuleIds;
@@ -359,6 +366,17 @@ class TwoWayPackEntryList {
         const packEntries = [];
         this.bundlePackEntries.forEach((packEntry) => {
             if (this.tree.getTreeNode(packEntry.id) === undefined) {
+                packEntries.push(packEntry);
+            }
+        });
+        return packEntries;
+    }
+
+    findDedupeReferencePackEntries(packId) {
+        const packEntries = [];
+        const dedupeSourceFrom = 'arguments[4]["' + packId + '"][0].apply(exports,arguments)';
+        this.bundlePackEntries.forEach((packEntry) => {
+            if (packEntry.source === dedupeSourceFrom) {
                 packEntries.push(packEntry);
             }
         });
